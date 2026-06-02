@@ -7,20 +7,5 @@ app = FastAPI(
     title="AI Safety Gateway"
 )
 
-
-@app.get("/")
-def root():
-    return {
-        "status": "ok",
-        "message": "AI Safety Gateway is running"
-    }
-
-
-@app.get("/health")
-def health():
-    return {
-        "status": "ok"
-    }
-
 app.include_router(analyze_router)
 app.include_router(attack_router)
