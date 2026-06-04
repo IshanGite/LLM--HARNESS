@@ -12,7 +12,7 @@ charset-normalizer==3.4.7
 click==8.4.1
 colorama==0.4.6
 distro==1.9.0
-docutils==0.22.4
+docutils==0.21.2
 fastapi==0.136.3
 frozenlist==1.8.0
 h11==0.16.0
@@ -36,7 +36,7 @@ requests==2.34.2
 roman-numerals==4.1.0
 sniffio==1.3.1
 snowballstemmer==3.1.0
-Sphinx==9.1.0
+Sphinx==8.1.3
 sphinx-press-theme==0.8.0
 sphinxcontrib-applehelp==2.0.0
 sphinxcontrib-devhelp==2.0.0
