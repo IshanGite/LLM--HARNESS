@@ -1,8 +1,9 @@
 import asyncio
 import random
+# pyrefly: ignore [missing-import]
 import numpy as np
 import google.generativeai as genai
-from app.config import OPENAI_API_KEY
+from app.config import GEMINI_API_KEY
 from app.models.schemas import EmbeddingResult
 
 EMBEDDING_MODEL = "models/text-embedding-004"
@@ -22,7 +23,7 @@ async def get_embedding(text: str) -> list[float] | None:
     by config.py — do NOT call genai.configure() again here.
     config.py already calls it once at startup. Just use genai directly.
     """
-    if not OPENAI_API_KEY or OPENAI_API_KEY.startswith("mock") or OPENAI_API_KEY == "TODO_KEY":
+    if not GEMINI_API_KEY or GEMINI_API_KEY.startswith("mock") or GEMINI_API_KEY == "TODO_KEY":
         # Deterministic mock embedding vector of length 768
         # We seed the generator with the text to ensure consistency
         rng = random.Random(text)

@@ -1,13 +1,7 @@
 import json
-
-from openai import OpenAI
-
-from app.config import OPENAI_API_KEY
-
-client = OpenAI(
-    api_key=OPENAI_API_KEY
-)
-
+# pyrefly: ignore [missing-import]
+import google.generativeai as genai
+from app.config import gemini_model
 
 SYSTEM_PROMPT = """
 You are an AI Red Teaming Expert.
@@ -38,7 +32,6 @@ Return ONLY valid JSON.
 }
 """
 
-
 def generate_attacks(
     prompt: str,
     category: str,
@@ -58,25 +51,19 @@ Intent:
 Generate 10 adversarial variants.
 """
 
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        temperature=0.8,
-        messages=[
-            {
-                "role": "system",
-                "content": SYSTEM_PROMPT
-            },
-            {
-                "role": "user",
-                "content": user_message
-            }
-        ]
+    generation_config = genai.GenerationConfig(
+        response_mime_type="application/json",
+        temperature=0.8
     )
-
-    content = response.choices[0].message.content
+    full_prompt = f"{SYSTEM_PROMPT}\n\n{user_message}"
 
     try:
+        response = gemini_model.generate_content(
+            full_prompt,
+            generation_config=generation_config
+        )
 
+        content = response.text
         parsed = json.loads(content)
 
         return {
@@ -87,7 +74,6 @@ Generate 10 adversarial variants.
         }
 
     except Exception:
-
         return {
             "original_prompt": prompt,
             "category": category,

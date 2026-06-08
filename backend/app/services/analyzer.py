@@ -1,10 +1,7 @@
-from openai import OpenAI
-from app.config import OPENAI_API_KEY
 import json
-
-client = OpenAI(
-    api_key=OPENAI_API_KEY
-)
+# pyrefly: ignore [missing-import]
+import google.generativeai as genai
+from app.config import gemini_model
 
 SYSTEM_PROMPT = """
 You are an AI safety classifier.
@@ -21,21 +18,16 @@ Risk must be between 0 and 1.
 """
 
 def analyze_prompt(prompt: str):
-
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {
-                "role": "system",
-                "content": SYSTEM_PROMPT
-            },
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ]
+    generation_config = genai.GenerationConfig(
+        response_mime_type="application/json"
+    )
+    full_prompt = f"{SYSTEM_PROMPT}\n\n{prompt}"
+    
+    response = gemini_model.generate_content(
+        full_prompt,
+        generation_config=generation_config
     )
 
-    result = response.choices[0].message.content
+    result = response.text
 
     return json.loads(result)

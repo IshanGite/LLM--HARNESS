@@ -2,8 +2,8 @@ import asyncio
 import time
 import json
 from datetime import datetime
-from openai import OpenAI
-from app.config import OPENAI_API_KEY
+import google.generativeai as genai
+from app.config import GEMINI_API_KEY, gemini_model
 from app.models.schemas import (
     SeverityBadge,
     EnrichmentSignals,
@@ -15,10 +15,6 @@ from app.models.schemas import (
 )
 from app.services.deepeval_scorer import run_deepeval_metrics
 from app.services.embedding_scorer import detect_drift
-
-client = OpenAI(
-    api_key=OPENAI_API_KEY or "mock_key"
-)
 
 # For checklist verification: response_mime_type="application/json"
 
@@ -62,8 +58,8 @@ async def call_gemini_with_retry(
         attempt 3: wait RETRY_BASE_DELAY * 2 seconds (2.0s)
         if all fail: raise RuntimeError(f"Gemini failed after {MAX_RETRIES} attempts: {last_error}")
     """
-    # For testing when OPENAI_API_KEY is not set or is empty
-    if not OPENAI_API_KEY or OPENAI_API_KEY.startswith("mock") or OPENAI_API_KEY == "TODO_KEY":
+    # For testing when GEMINI_API_KEY is not set or is empty
+    if not GEMINI_API_KEY or GEMINI_API_KEY.startswith("mock") or GEMINI_API_KEY == "TODO_KEY":
         if system_prompt is None:
             prompt_lower = prompt.lower()
             if "confidential" in prompt_lower:
@@ -105,23 +101,30 @@ async def call_gemini_with_retry(
     delay = RETRY_BASE_DELAY
     for attempt in range(1, MAX_RETRIES + 1):
         try:
-            messages = []
             if system_prompt:
-                messages.append({"role": "system", "content": system_prompt})
-            messages.append({"role": "user", "content": prompt})
-
-            kwargs = {
-                "model": "gpt-4o-mini",
-                "messages": messages,
-            }
+                full_prompt = f"{system_prompt}\n\n{prompt}"
+            else:
+                full_prompt = prompt
+                
+            generation_config = None
             if use_json_mode:
-                kwargs["response_format"] = {"type": "json_object"}
+                generation_config = genai.GenerationConfig(
+                    response_mime_type="application/json"
+                )
 
-            # Execute the call in a separate thread to ensure asyncio non-blocking execution
-            response = await asyncio.to_thread(client.chat.completions.create, **kwargs)
-            return response.choices[0].message.content or ""
+            loop = asyncio.get_event_loop()
+            response = await loop.run_in_executor(
+                None,
+                lambda: gemini_model.generate_content(
+                    full_prompt,
+                    generation_config=generation_config
+                )
+            )
+            return response.text or ""
         except Exception as e:
             last_error = e
+            if "quota" in str(e).lower() or "rate" in str(e).lower():
+                await asyncio.sleep(2)
             if attempt < MAX_RETRIES:
                 await asyncio.sleep(delay)
                 delay *= 2.0

@@ -1,33 +1,9 @@
 import asyncio
 import hashlib
+# pyrefly: ignore [missing-import]
 from deepeval.models.base_model import DeepEvalBaseLLM
-from app.config import OPENAI_API_KEY
-from openai import OpenAI
+from app.config import GEMINI_API_KEY, gemini_model
 from app.models.schemas import DeepEvalResult
-
-client = OpenAI(
-    api_key=OPENAI_API_KEY or "mock_key"
-)
-
-
-class OpenAIWrapper:
-    """
-    Exposes a generate_content method to allow the OpenAI client to be used
-    with the required generate() interface.
-    """
-    def __init__(self, openai_client):
-        self.client = openai_client
-
-    def generate_content(self, prompt: str):
-        response = self.client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}]
-        )
-        class ResponseText:
-            @property
-            def text(self):
-                return response.choices[0].message.content or ""
-        return ResponseText()
 
 
 class GeminiDeepEvalBackend(DeepEvalBaseLLM):
@@ -38,8 +14,7 @@ class GeminiDeepEvalBackend(DeepEvalBaseLLM):
     """
     
     def load_model(self):
-        # Return the wrapper around OpenAI client to match the project's client pattern.
-        return OpenAIWrapper(client)
+        return gemini_model
     
     def generate(self, prompt: str) -> str:
         model = self.load_model()
@@ -73,7 +48,7 @@ async def run_hallucination_metric(
     Returns: float 0.0–1.0 (score from metric)
     On any exception: return 0.0 (safe fallback, log the error)
     """
-    if not OPENAI_API_KEY or OPENAI_API_KEY.startswith("mock") or OPENAI_API_KEY == "TODO_KEY":
+    if not GEMINI_API_KEY or GEMINI_API_KEY.startswith("mock") or GEMINI_API_KEY == "TODO_KEY":
         h = int(hashlib.md5((input_text + actual_output).encode()).hexdigest(), 16)
         return round((h % 100) / 100.0 * 0.2, 4)
 
@@ -112,7 +87,7 @@ async def run_toxicity_metric(
     Returns: float 0.0–1.0
     On any exception: return 0.0
     """
-    if not OPENAI_API_KEY or OPENAI_API_KEY.startswith("mock") or OPENAI_API_KEY == "TODO_KEY":
+    if not GEMINI_API_KEY or GEMINI_API_KEY.startswith("mock") or GEMINI_API_KEY == "TODO_KEY":
         h = int(hashlib.md5((input_text + actual_output).encode()).hexdigest(), 16)
         return round((h % 100) / 100.0 * 0.25, 4)
 
@@ -149,7 +124,7 @@ async def run_bias_metric(
     Returns: float 0.0–1.0
     On any exception: return 0.0
     """
-    if not OPENAI_API_KEY or OPENAI_API_KEY.startswith("mock") or OPENAI_API_KEY == "TODO_KEY":
+    if not GEMINI_API_KEY or GEMINI_API_KEY.startswith("mock") or GEMINI_API_KEY == "TODO_KEY":
         h = int(hashlib.md5((input_text + actual_output).encode()).hexdigest(), 16)
         return round((h % 100) / 100.0 * 0.15, 4)
 
