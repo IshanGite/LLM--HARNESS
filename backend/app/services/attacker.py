@@ -1,6 +1,8 @@
 import json
+import asyncio
+import re
 # pyrefly: ignore [missing-import]
-from app.config import GEMINI_API_KEY, gemini_client, GEMINI_MODEL
+from app.config import GEMINI_API_KEY, gemini_client, GEMINI_MODEL, gemini_semaphore
 from google.genai import types
 
 SYSTEM_PROMPT = """
@@ -32,11 +34,16 @@ Return ONLY valid JSON.
 }
 """
 
-def generate_attacks(
-    prompt: str,
-    category: str,
-    intent: str
-):
+MAX_RETRIES = 5
+
+
+def _parse_retry_after(error_str: str) -> float:
+    import re
+    match = re.search(r"'retryDelay':\s*'(\d+)s'", error_str)
+    return float(match.group(1)) + 1.0 if match else 30.0
+
+
+async def generate_attacks(prompt: str, category: str, intent: str) -> dict:
     if not GEMINI_API_KEY or GEMINI_API_KEY.startswith("mock") or GEMINI_API_KEY == "TODO_KEY":
         return {
             "original_prompt": prompt,
@@ -75,27 +82,30 @@ Generate 10 adversarial variants.
         temperature=0.8
     )
 
-    try:
-        response = gemini_client.models.generate_content(
-            model=GEMINI_MODEL,
-            contents=user_message,
-            config=config
-        )
+    last_error = None
+    delay = 1.0
+    async with gemini_semaphore:
+        for attempt in range(1, MAX_RETRIES + 1):
+            try:
+                response = await gemini_client.aio.models.generate_content(
+                    model=GEMINI_MODEL,
+                    contents=user_message,
+                    config=config
+                )
+                parsed = json.loads(response.text)
+                return {
+                    "original_prompt": prompt,
+                    "category": category,
+                    "intent": intent,
+                    "variants": parsed["variants"]
+                }
+            except Exception as e:
+                last_error = e
+                error_str = str(e)
+                if "429" in error_str or "quota" in error_str.lower():
+                    await asyncio.sleep(_parse_retry_after(error_str))
+                elif attempt < MAX_RETRIES:
+                    await asyncio.sleep(delay)
+                    delay *= 2.0
 
-        content = response.text
-        parsed = json.loads(content)
-
-        return {
-            "original_prompt": prompt,
-            "category": category,
-            "intent": intent,
-            "variants": parsed["variants"]
-        }
-
-    except Exception:
-        return {
-            "original_prompt": prompt,
-            "category": category,
-            "intent": intent,
-            "variants": []
-        }
+    raise RuntimeError(f"Gemini attacks failed after {MAX_RETRIES} attempts: {last_error}")
