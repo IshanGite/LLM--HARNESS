@@ -5,6 +5,9 @@ from app.routes.analyze import router as analyze_router
 from app.routes.attacks import router as attack_router
 from app.routes.score import router as score_router
 from app.routes.redteam import router as redteam_router
+from app.routes.defend import router as defend_router
+from app.routes.certificate import router as certificate_router
+from app.routes.firewall import router as firewall_router
 
 app = FastAPI(title="AI Safety Gateway")
 
@@ -19,3 +22,6 @@ app.include_router(analyze_router)
 app.include_router(attack_router)
 app.include_router(score_router)
 app.include_router(redteam_router)
+app.include_router(defend_router)
+app.include_router(certificate_router)
+app.include_router(firewall_router)

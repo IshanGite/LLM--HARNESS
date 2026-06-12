@@ -1,5 +1,5 @@
 from pydantic import BaseModel, field_validator
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from enum import Enum
 
 
@@ -209,3 +209,107 @@ class RedTeamResponse(BaseModel):
     severity_distribution: Dict[str, int]
     evaluation_time_ms: float
     timestamp: str
+
+
+# ── Defense Synthesis ────────────────────────────────────────────────────────
+
+class DefenseRequest(BaseModel):
+    attack: str
+    attack_category: str
+    attack_reasoning: str
+    original_score: float
+    original_system_prompt: str = ""
+
+
+class DefenseResult(BaseModel):
+    original_system_prompt: str
+    hardened_system_prompt: str
+    patch_explanation: str
+    original_score: float
+    defended_score: float
+    defended_response: str
+    improvement: float          # original_score - defended_score
+    successfully_defended: bool # defended_score < 0.40
+
+
+# ── Safety Certificate ───────────────────────────────────────────────────────
+
+class TechniqueScore(BaseModel):
+    technique: str
+    attacks_tested: int
+    mean_score: float
+    max_score: float
+    worst_severity: str
+    violation_rate: float
+
+
+class SafetyCertificate(BaseModel):
+    tested_at: str
+    total_attacks_tested: int
+    technique_scores: List[TechniqueScore]
+    overall_safety_score: float  # 0–10
+    safety_grade: str            # A B C D F
+    highest_risk_technique: str
+    recommendations: List[str]
+    composite_risk: float
+    violation_rate: float
+    severity_distribution: Dict[str, int]
+
+
+class CertificateRequest(BaseModel):
+    all_results: List[EnhancedAttackResult]
+    composite_risk: float
+    violation_rate: float
+    severity_distribution: Dict[str, int]
+    total_attacks_tried: int
+
+
+# ── Multi-Turn Attacks ───────────────────────────────────────────────────────
+
+class MultiTurnRequest(BaseModel):
+    prompt: str
+    num_turns: int = 5
+    num_scenarios: int = 3
+
+
+class ConversationTurn(BaseModel):
+    turn_number: int
+    role: str    # "user" | "model"
+    content: str
+
+
+class MultiTurnResult(BaseModel):
+    scenario_id: int
+    strategy: str
+    conversation: List[ConversationTurn]
+    violation_turn: Optional[int]  # None if no violation
+    final_score: float
+    severity: SeverityBadge
+    violated: bool
+    category: str
+    reasoning: str
+
+
+class MultiTurnResponse(BaseModel):
+    original_prompt: str
+    results: List[MultiTurnResult]
+    best_result: MultiTurnResult
+    violation_rate: float
+    evaluation_time_ms: float
+    timestamp: str
+
+
+# ── Prompt Injection Firewall ────────────────────────────────────────────────
+
+class FirewallRequest(BaseModel):
+    prompt: str
+
+
+class FirewallResponse(BaseModel):
+    safe: bool
+    blocked: bool
+    risk_score: float
+    action: str              # "allow" | "warn" | "block"
+    reasons: List[str]
+    detected_techniques: List[str]
+    evaluation_ms: float

@@ -3,8 +3,13 @@ import json
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
-from app.models.schemas import RedTeamRequest, RedTeamResponse, EnhancedAttackResult
+from app.models.schemas import (
+    RedTeamRequest, RedTeamResponse, EnhancedAttackResult,
+    MultiTurnRequest, MultiTurnResponse,
+)
 from app.services.iterative_engine import run_redteam
+from app.services.multiturn_attacker import run_multiturn_attack
+from app.services.analyzer import analyze_prompt
 
 router = APIRouter(prefix="/redteam", tags=["redteam"])
 
@@ -83,3 +88,20 @@ async def redteam_stream(request: RedTeamRequest):
             "X-Accel-Buffering": "no",
         },
     )
+
+
+@router.post("/multiturn", response_model=MultiTurnResponse)
+async def multiturn(request: MultiTurnRequest):
+    try:
+        analysis = await analyze_prompt(request.prompt)
+        return await run_multiturn_attack(
+            prompt=request.prompt,
+            category=analysis["category"],
+            intent=analysis["intent"],
+            num_turns=request.num_turns,
+            num_scenarios=request.num_scenarios,
+        )
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
