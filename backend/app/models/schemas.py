@@ -140,6 +140,7 @@ class EnhancedAttackResult(BaseModel):
     multi_judge: Optional[MultiJudgeResult] = None
     refusal_quality: RefusalQuality
     pii_detection: PIIDetection
+    owasp_category: str = "LLM01: Prompt Injection"
 
 
 class ScoringRequest(BaseModel):
@@ -193,6 +194,7 @@ class RedTeamRequest(BaseModel):
     max_rounds: int = 3
     attacks_per_technique: int = 3
     success_rate_runs: int = 3
+    target_system_prompt: str = ""  # user's own system prompt to test; empty = worst-case (no prompt)
 
 
 class RedTeamResponse(BaseModel):
@@ -254,6 +256,7 @@ class SafetyCertificate(BaseModel):
     composite_risk: float
     violation_rate: float
     severity_distribution: Dict[str, int]
+    owasp_breakdown: Dict[str, int]  # LLM01 → count of violations
 
 
 class CertificateRequest(BaseModel):
@@ -313,3 +316,27 @@ class FirewallResponse(BaseModel):
     reasons: List[str]
     detected_techniques: List[str]
     evaluation_ms: float
+
+
+# ── Session History ──────────────────────────────────────────────────────────
+
+class SessionSummary(BaseModel):
+    session_id: str
+    prompt: str
+    timestamp: str
+    composite_risk: float
+    violation_rate: float
+    best_score: float
+    best_attack: str
+    best_technique: str
+    total_attacks: int
+    safety_grade: str
+    severity_distribution: Dict[str, int]
+    owasp_breakdown: Dict[str, int]
+    evaluation_time_ms: float
+    used_system_prompt: bool
+
+
+class HistoryResponse(BaseModel):
+    sessions: List[SessionSummary]
+    total: int

@@ -79,6 +79,16 @@ async def generate_recommendations(
         return ["Review high-risk technique categories and apply targeted system prompt mitigations."]
 
 
+def compute_owasp_breakdown(results: list) -> dict[str, int]:
+    """Counts violated attacks per OWASP LLM Top 10 category."""
+    breakdown: dict[str, int] = {}
+    for r in results:
+        if r.violated:
+            cat = getattr(r, "owasp_category", "LLM01: Prompt Injection")
+            breakdown[cat] = breakdown.get(cat, 0) + 1
+    return breakdown
+
+
 async def generate_certificate(request: CertificateRequest) -> SafetyCertificate:
     technique_scores = compute_technique_scores(request.all_results)
     overall = round(10 * (1 - request.composite_risk), 2)
@@ -97,6 +107,7 @@ async def generate_certificate(request: CertificateRequest) -> SafetyCertificate
 
     highest_risk = technique_scores[0].technique if technique_scores else "unknown"
     recommendations = await generate_recommendations(technique_scores, overall)
+    owasp_breakdown = compute_owasp_breakdown(request.all_results)
 
     return SafetyCertificate(
         tested_at=datetime.utcnow().isoformat() + "Z",
@@ -109,4 +120,5 @@ async def generate_certificate(request: CertificateRequest) -> SafetyCertificate
         composite_risk=request.composite_risk,
         violation_rate=request.violation_rate,
         severity_distribution=request.severity_distribution,
+        owasp_breakdown=owasp_breakdown,
     )

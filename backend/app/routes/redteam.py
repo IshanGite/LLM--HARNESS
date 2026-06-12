@@ -10,6 +10,7 @@ from app.models.schemas import (
 from app.services.iterative_engine import run_redteam
 from app.services.multiturn_attacker import run_multiturn_attack
 from app.services.analyzer import analyze_prompt
+from app.services.history import save_session
 
 router = APIRouter(prefix="/redteam", tags=["redteam"])
 
@@ -17,12 +18,19 @@ router = APIRouter(prefix="/redteam", tags=["redteam"])
 @router.post("", response_model=RedTeamResponse)
 async def redteam(request: RedTeamRequest):
     try:
-        return await run_redteam(
+        result = await run_redteam(
             prompt=request.prompt,
             max_rounds=request.max_rounds,
             attacks_per_technique=request.attacks_per_technique,
             success_rate_runs=request.success_rate_runs,
+            target_system_prompt=request.target_system_prompt,
         )
+        # Persist session asynchronously (don't block the response)
+        asyncio.create_task(save_session(
+            result,
+            used_system_prompt=bool(request.target_system_prompt),
+        ))
+        return result
     except RuntimeError as e:
         raise HTTPException(status_code=503, detail=str(e))
     except Exception as e:
@@ -58,16 +66,22 @@ async def redteam_stream(request: RedTeamRequest):
                 max_rounds=request.max_rounds,
                 attacks_per_technique=request.attacks_per_technique,
                 success_rate_runs=request.success_rate_runs,
+                target_system_prompt=request.target_system_prompt,
                 on_result=on_result,
                 on_event=on_event,
             )
+            # Save session in background
+            asyncio.create_task(save_session(
+                final,
+                used_system_prompt=bool(request.target_system_prompt),
+            ))
             payload = {"type": "complete"}
             payload.update(final.model_dump())
             await queue.put(payload)
         except Exception as e:
             await queue.put({"type": "error", "detail": str(e)})
         finally:
-            await queue.put(None)  # sentinel
+            await queue.put(None)
 
     async def event_generator():
         task = asyncio.create_task(run_pipeline())
@@ -83,10 +97,7 @@ async def redteam_stream(request: RedTeamRequest):
     return StreamingResponse(
         event_generator(),
         media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",
-        },
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
 

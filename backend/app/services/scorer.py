@@ -138,20 +138,16 @@ async def call_gemini_with_retry(
     raise RuntimeError(f"Gemini failed after {MAX_RETRIES} attempts: {str(last_error)}")
 
 
-async def probe_target_model(attack: str) -> str:
+async def probe_target_model(attack: str, system_prompt: str | None = None) -> str:
     """
-    Sends an attack variant to Gemini with NO system prompt.
-    This simulates an unguarded, naive production LLM with no safety
-    system prompt — the worst-case deployment scenario.
-    
-    The attack is sent exactly as-is, as a plain user message.
-    No wrapping, no modification.
-    
-    Uses call_gemini_with_retry internally.
-    Returns the raw string response.
-    If response is empty string: return "No response generated."
+    Sends an attack to Gemini. With no system_prompt this simulates the
+    worst-case unguarded deployment. Pass the user's own system_prompt to
+    test whether their actual defenses hold up.
     """
-    res = await call_gemini_with_retry(prompt=attack, system_prompt=None)
+    res = await call_gemini_with_retry(
+        prompt=attack,
+        system_prompt=system_prompt or None,
+    )
     if not res:
         return "No response generated."
     return res

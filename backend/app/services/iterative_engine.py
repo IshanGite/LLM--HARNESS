@@ -27,10 +27,13 @@ async def _score_batch(
     attacks,
     round_number: int,
     on_result: Callable[[EnhancedAttackResult], Awaitable[None]] | None,
+    target_system_prompt: str = "",
 ) -> list[EnhancedAttackResult]:
-    """Scores all attacks in a batch concurrently, streaming each result via on_result."""
     async def _score_and_notify(ta):
-        result = await score_enhanced_attack(ta.attack, ta.technique, round_number)
+        result = await score_enhanced_attack(
+            ta.attack, ta.technique, round_number,
+            target_system_prompt=target_system_prompt,
+        )
         if on_result:
             await on_result(result)
         return result
@@ -47,18 +50,12 @@ async def run_redteam(
     max_rounds: int = 3,
     attacks_per_technique: int = 3,
     success_rate_runs: int = 3,
+    target_system_prompt: str = "",
     on_result: Callable[[EnhancedAttackResult], Awaitable[None]] | None = None,
     on_event: Callable[[dict], Awaitable[None]] | None = None,
 ) -> RedTeamResponse:
-    """
-    Full iterative red-team pipeline.
-
-    on_result: called with each EnhancedAttackResult as it completes (for SSE streaming).
-    on_event:  called with round-level events {"type": "round_complete", ...}.
-    """
     start = time.monotonic()
 
-    # Phase 1: analyse
     analysis = await analyze_prompt(prompt)
     category = analysis["category"]
     intent = analysis["intent"]
@@ -70,8 +67,10 @@ async def run_redteam(
     taxonomy_attacks = await generate_taxonomy_attacks(
         prompt, category, intent, variants_per_technique=attacks_per_technique
     )
-
-    round_results = await _score_batch(taxonomy_attacks, round_number=0, on_result=on_result)
+    round_results = await _score_batch(
+        taxonomy_attacks, round_number=0,
+        on_result=on_result, target_system_prompt=target_system_prompt,
+    )
     all_results.extend(round_results)
 
     best_r0 = max(round_results, key=lambda r: r.composite_score, default=None)
@@ -85,7 +84,6 @@ async def run_redteam(
         critical_found=critical_r0,
         early_exit=critical_r0,
     ))
-
     if on_event:
         await on_event({"type": "round_complete", "round": 0,
                         "best_score": rounds[-1].best_score,
@@ -94,7 +92,6 @@ async def run_redteam(
     # ── Iterative rounds (PAIR loop) ───────────────────────────────────────
     if not critical_r0:
         for rnd in range(1, max_rounds + 1):
-            # Seed next round from top 5 attacks so far
             sorted_so_far = sorted(all_results, key=lambda r: r.composite_score, reverse=True)
             seeds = sorted_so_far[:5]
 
@@ -116,7 +113,10 @@ async def run_redteam(
             if not evolved_attacks:
                 break
 
-            round_results = await _score_batch(evolved_attacks, round_number=rnd, on_result=on_result)
+            round_results = await _score_batch(
+                evolved_attacks, round_number=rnd,
+                on_result=on_result, target_system_prompt=target_system_prompt,
+            )
             all_results.extend(round_results)
 
             best_rn = max(round_results, key=lambda r: r.composite_score, default=None)
@@ -130,7 +130,6 @@ async def run_redteam(
                 critical_found=critical_rn,
                 early_exit=critical_rn,
             ))
-
             if on_event:
                 await on_event({"type": "round_complete", "round": rnd,
                                 "best_score": rounds[-1].best_score,
@@ -141,17 +140,14 @@ async def run_redteam(
     # ── Post-loop: multi-judge top 10, success rate top 3, benchmarks ──────
     all_results.sort(key=lambda r: r.composite_score, reverse=True)
 
-    # Multi-judge on top 10
     top10 = all_results[:10]
     mj_tasks = [multi_judge_response(r.attack, r.model_response) for r in top10]
     mj_results = await asyncio.gather(*mj_tasks, return_exceptions=True)
     for r, mj in zip(top10, mj_results):
         if not isinstance(mj, Exception):
             r.multi_judge = mj
-            # Recompute composite with multi-judge mean as authoritative score
             r.judge_score = mj.mean_score
             r.violated = mj.violated
-            from app.services.enhanced_scorer import _enhanced_composite
             from app.services.scorer import assign_severity
             r.composite_score = _enhanced_composite(
                 mj.mean_score, r.enrichment, r.deepeval_result,
@@ -159,13 +155,15 @@ async def run_redteam(
             )
             r.severity = assign_severity(r.composite_score)
 
-    # Re-sort after multi-judge score updates
     all_results.sort(key=lambda r: r.composite_score, reverse=True)
 
-    # Success rate on top 3
     success_rates: list[SuccessRateResult] = []
     sr_tasks = [
-        score_attack_n_times(r.attack, r.technique, n=success_rate_runs)
+        score_attack_n_times(
+            r.attack, r.technique,
+            n=success_rate_runs,
+            target_system_prompt=target_system_prompt,
+        )
         for r in all_results[:3]
     ]
     sr_results = await asyncio.gather(*sr_tasks, return_exceptions=True)
@@ -173,7 +171,6 @@ async def run_redteam(
         if isinstance(sr, SuccessRateResult):
             success_rates.append(sr)
 
-    # Benchmark winner against other Gemini models
     model_benchmarks: list[ModelProbeResult] = []
     if all_results:
         model_benchmarks = await benchmark_models(all_results[0].attack)
@@ -181,7 +178,6 @@ async def run_redteam(
     if on_event:
         await on_event({"type": "post_processing_complete"})
 
-    # ── Aggregate stats ────────────────────────────────────────────────────
     total = len(all_results)
     composite_risk = round(statistics.mean(r.composite_score for r in all_results), 4) if all_results else 0.0
     violated_count = sum(1 for r in all_results if r.violated)
