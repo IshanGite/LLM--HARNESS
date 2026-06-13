@@ -76,16 +76,24 @@ function ThreatBeat({
   const gap = 1 / total;
   const s = i * gap;
   const e = (i + 1) * gap;
-  const opacity = useTransform(progress, [s, s + 0.13, e - 0.13, e], [0, 1, 1, 0]);
-  const y = useTransform(progress, [s, s + 0.13, e - 0.13, e], [56, 0, 0, -56]);
+  // Cross-fade: each beat starts appearing half a FADE before its natural slot boundary,
+  // overlapping with the previous beat's fade-out so there is never a blank window.
+  const FADE = 0.055;
+  const i0 = Math.max(0, s - FADE / 2);
+  const i1 = Math.min(s + FADE, e);
+  const o0 = Math.max(s, e - FADE);
+  const o1 = Math.min(1, e + FADE / 2);
+  const opacity = useTransform(progress, [i0, i1, o0, o1], [0, 1, 1, 0]);
 
   return (
     <motion.div
       style={{
         opacity,
-        y,
         position: "absolute",
-        inset: 0,
+        top: 64,
+        left: 0,
+        right: 0,
+        bottom: 0,
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -130,7 +138,7 @@ function ThreatSection() {
     <section
       id="threat"
       ref={ref}
-      style={{ height: `${THREAT_BEATS.length * 100}vh`, position: "relative" }}
+      style={{ height: `${THREAT_BEATS.length * 67}vh`, position: "relative" }}
     >
       {/* the sticky viewport — content sticks while the outer track scrolls */}
       <div
@@ -138,7 +146,7 @@ function ThreatSection() {
           position: "sticky",
           top: 0,
           height: "100vh",
-          overflow: "hidden",
+          overflow: "clip",
         }}
       >
         {/* faint large chapter label in the background */}
@@ -373,7 +381,7 @@ const FADE = 140;
 // ─── HOME PAGE ────────────────────────────────────────────────────────────────
 export default function HomePage() {
   return (
-    <main style={{ background: "transparent", overflowX: "hidden", position: "relative" }}>
+    <main style={{ background: "transparent", overflowX: "clip", position: "relative" }}>
 
       {/* ── Background: Higgsfield video when available, ShaderGradient otherwise */}
       {HERO_VIDEO_URL ? (
