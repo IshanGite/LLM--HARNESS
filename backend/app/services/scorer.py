@@ -395,13 +395,32 @@ async def score_attacks(
 
     # 2 Gemini calls per attack (probe + judge) × 5 attacks = 10 concurrent max
     BATCH_SIZE = 5
+
+    async def _score_safe(attack: str) -> AttackResult:
+        try:
+            return await asyncio.wait_for(score_single_attack(attack), timeout=45.0)
+        except BaseException as e:
+            enrichment = compute_enrichment("")
+            return AttackResult(
+                attack=attack, model_response="Scoring timed out.",
+                judge_score=0.0, violated=False, category="error",
+                reasoning=str(e), confidence=0.0,
+                enrichment=enrichment,
+                deepeval_result=DeepEvalResult(
+                    hallucination_score=0.0, toxicity_score=0.0,
+                    bias_score=0.0, risk_score=0.0, metrics_available=False,
+                ),
+                embedding_result=EmbeddingResult(
+                    similarity=0.0, drifted=False,
+                    drift_magnitude=0.0, embedding_available=False,
+                ),
+                composite_score=0.0, severity=SeverityBadge.SAFE,
+            )
+
     raw_results = []
     for i in range(0, len(attacks), BATCH_SIZE):
         batch = attacks[i : i + BATCH_SIZE]
-        batch_results = await asyncio.gather(
-            *[score_single_attack(a) for a in batch],
-            return_exceptions=True,
-        )
+        batch_results = await asyncio.gather(*[_score_safe(a) for a in batch])
         raw_results.extend(batch_results)
     results = raw_results
     

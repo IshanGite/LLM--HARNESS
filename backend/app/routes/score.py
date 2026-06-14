@@ -1,3 +1,5 @@
+import asyncio
+import sys
 import time
 import json
 # pyrefly: ignore [missing-import]
@@ -22,13 +24,25 @@ router = APIRouter()
 )
 async def create_score(request: ScoringRequest):
     _start_time = time.time()
+    sys.stderr.write(f"[score] handler entered, {len(request.attacks)} attacks\n")
+    sys.stderr.flush()
+
     if not request.attacks:
         raise HTTPException(status_code=422, detail="attacks list is empty")
 
     try:
-        result = await score_attacks(request.original_prompt, request.attacks)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        result = await asyncio.wait_for(
+            score_attacks(request.original_prompt, request.attacks),
+            timeout=180.0,
+        )
+    except asyncio.TimeoutError:
+        sys.stderr.write("[score] TIMEOUT after 180s\n"); sys.stderr.flush()
+        raise HTTPException(status_code=504, detail="Scoring timed out — try with fewer attacks")
+    except BaseException as e:
+        sys.stderr.write(f"[score] CRASH: {type(e).__name__}: {e}\n"); sys.stderr.flush()
+        raise HTTPException(status_code=500, detail=f"{type(e).__name__}: {e}")
+
+    sys.stderr.write(f"[score] completed in {time.time()-_start_time:.1f}s\n"); sys.stderr.flush()
 
     # DB write is best-effort — never let it fail the scoring response
     try:
