@@ -17,6 +17,10 @@ The project is built with a FastAPI backend and a Next.js frontend. It uses Open
 - Safety certificate view with grade, recommendations, and OWASP-style breakdown
 - Modern Next.js UI with a landing page and an app workspace at `/harness`
 
+## Project Docs
+
+- [Software Development Life Cycle](SDLC.md)
+
 ## Workflow
 
 1. **Analyze**
