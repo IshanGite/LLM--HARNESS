@@ -1,4 +1,50 @@
-.venv/
-__pycache__/
-*.pyc
+# Environment files
+.env
+.env.*
+!.env.example
 backend/.env
+backend/.env.*
+frontend/.env.local
+frontend/.env.*.local
+openai-ready-project/backend/.env
+openai-ready-project/backend/.env.*
+openai-ready-project/frontend/.env.local
+openai-ready-project/frontend/.env.*.local
+
+# Python
+.venv/
+venv/
+backend/.venv/
+openai-ready-project/backend/.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node / Next.js
+node_modules/
+frontend/node_modules/
+openai-ready-project/frontend/node_modules/
+.next/
+frontend/.next/
+openai-ready-project/frontend/.next/
+out/
+dist/
+*.tsbuildinfo
+next-env.d.ts
+
+# Local data and caches
+*.db
+*.sqlite
+*.sqlite3
+.deepeval/
+.npm-cache/
+openai-ready-project/.npm-cache/
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
