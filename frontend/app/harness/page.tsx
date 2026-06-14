@@ -95,7 +95,7 @@ function VariantRow({
         padding: "18px 20px",
         borderRadius: 16,
         border: selected
-          ? "1px solid rgba(128,82,255,0.4)"
+          ? "1px solid rgba(249,115,22,0.45)"
           : "1px solid rgba(255,255,255,0.07)",
         cursor: "pointer",
         transition: "border-color 150ms ease",
@@ -108,7 +108,7 @@ function VariantRow({
         height: 16,
         borderRadius: 5,
         border: selected ? "none" : "1px solid rgba(255,255,255,0.2)",
-        background: selected ? "var(--color-plum-voltage)" : "transparent",
+        background: selected ? "var(--brand)" : "transparent",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -295,7 +295,7 @@ export default function HarnessPage() {
                         letterSpacing: "0.05em",
                         textTransform: "uppercase",
                         padding: 0,
-                        color: sidebarMode === "pipeline" && phaseStatus(key) === "active" ? "var(--color-bone)"
+                        color: sidebarMode === "pipeline" && phaseStatus(key) === "active" ? "var(--ink)"
                           : completedPhases.has(key) || (sidebarMode === "pipeline" && PHASE_ORDER[key] < PHASE_ORDER[phase])
                           ? "rgba(255,255,255,0.35)"
                           : "rgba(255,255,255,0.15)",
@@ -313,7 +313,7 @@ export default function HarnessPage() {
             </div>
 
             {/* Tools */}
-            <p className="type-eyebrow" style={{ color: "var(--color-smoke)", marginBottom: 16 }}>Tools</p>
+            <p className="eyebrow" style={{ marginBottom: 16 }}>Tools</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               {[
                 { mode: "firewall" as SidebarMode, Icon: Shield, label: "Firewall" },
@@ -330,7 +330,7 @@ export default function HarnessPage() {
                     alignItems: "center",
                     gap: 9,
                     padding: "6px 0",
-                    color: sidebarMode === mode ? "var(--color-bone)" : "rgba(255,255,255,0.3)",
+                    color: sidebarMode === mode ? "var(--brand)" : "rgba(255,255,255,0.3)",
                     fontFamily: "var(--font-acronym)",
                     fontSize: 13,
                     fontWeight: 600,
@@ -450,8 +450,8 @@ export default function HarnessPage() {
                   style={{ display: "flex", flexDirection: "column", gap: 36 }}
                 >
                   <div>
-                    <p className="type-eyebrow" style={{ color: "var(--color-smoke)", marginBottom: 16 }}>Phase 01</p>
-                    <h1 style={{ fontFamily: "var(--font-acronym)", fontWeight: 300, fontSize: "clamp(36px, 4vw, 52px)", lineHeight: 1.0, letterSpacing: "-0.04em", color: "var(--color-bone)", margin: "0 0 16px" }}>
+                    <p className="eyebrow" style={{ marginBottom: 16 }}>Phase 01</p>
+                    <h1 style={{ fontFamily: "var(--font-display), var(--font-sans), sans-serif", fontWeight: 700, fontSize: "clamp(36px, 4vw, 52px)", lineHeight: 0.96, letterSpacing: "-0.04em", color: "var(--ink)", margin: "0 0 16px" }}>
                       Analyze the prompt.
                     </h1>
                     <p className="type-base" style={{ color: "var(--color-smoke)", margin: 0, maxWidth: 480 }}>
@@ -474,7 +474,7 @@ export default function HarnessPage() {
                     </p>
                   </div>
 
-                  <button className="btn-plum" onClick={handleAnalyze} disabled={!prompt.trim() || loading} style={{ alignSelf: "flex-start" }}>
+                  <button className="btn btn-primary" onClick={handleAnalyze} disabled={!prompt.trim() || loading} style={{ alignSelf: "flex-start" }}>
                     {loading ? <><span className="spinner" />Analyzing…</> : "Analyze Prompt"}
                   </button>
 
@@ -489,7 +489,7 @@ export default function HarnessPage() {
                             <div className="score-display tabular" style={{
                               fontSize: 78,
                               color: analyzeRes.risk >= 0.65 ? "var(--color-amber-spark)"
-                                : analyzeRes.risk >= 0.40 ? "var(--color-plum-voltage)"
+                                : analyzeRes.risk >= 0.40 ? "var(--brand)"
                                 : "var(--color-lichen)",
                               lineHeight: 0.9, marginBottom: 10,
                             }}>
@@ -504,8 +504,8 @@ export default function HarnessPage() {
                               <span style={{
                                 fontFamily: "var(--font-mono)",
                                 fontSize: 13,
-                                color: "var(--color-plum-voltage)",
-                                border: "1px solid rgba(128,82,255,0.3)",
+                                color: "var(--brand)",
+                                border: "1px solid rgba(249,115,22,0.3)",
                                 borderRadius: 24,
                                 padding: "4px 14px",
                                 letterSpacing: "0.05em",
@@ -522,7 +522,7 @@ export default function HarnessPage() {
                           </div>
                         </div>
 
-                        <button className="btn-plum" onClick={handleGenerateAttacks} disabled={loading} style={{ alignSelf: "flex-start" }}>
+                        <button className="btn btn-primary" onClick={handleGenerateAttacks} disabled={loading} style={{ alignSelf: "flex-start" }}>
                           {loading ? <><span className="spinner" />Generating…</> : <>Generate Attacks <ChevronRight size={13} /></>}
                         </button>
                       </motion.div>
@@ -542,13 +542,13 @@ export default function HarnessPage() {
                   style={{ display: "flex", flexDirection: "column", gap: 36 }}
                 >
                   <div>
-                    <p className="type-eyebrow" style={{ color: "var(--color-smoke)", marginBottom: 16 }}>Phase 02</p>
-                    <h1 style={{ fontFamily: "var(--font-acronym)", fontWeight: 300, fontSize: "clamp(36px, 4vw, 52px)", lineHeight: 1.0, letterSpacing: "-0.04em", color: "var(--color-bone)", margin: "0 0 16px" }}>
+                    <p className="eyebrow" style={{ marginBottom: 16 }}>Phase 02</p>
+                    <h1 style={{ fontFamily: "var(--font-display), var(--font-sans), sans-serif", fontWeight: 700, fontSize: "clamp(36px, 4vw, 52px)", lineHeight: 0.96, letterSpacing: "-0.04em", color: "var(--ink)", margin: "0 0 16px" }}>
                       Select attacks to score.
                     </h1>
                     <p className="type-base" style={{ color: "var(--color-smoke)", margin: 0 }}>
                       {attackRes.variants.length} variants generated for category{" "}
-                      <span style={{ color: "var(--color-plum-voltage)", fontFamily: "var(--font-mono)", fontSize: 13 }}>
+                      <span style={{ color: "var(--brand)", fontFamily: "var(--font-mono)", fontSize: 13 }}>
                         {attackRes.category}
                       </span>.
                     </p>
@@ -588,10 +588,10 @@ export default function HarnessPage() {
                   </div>
 
                   <div style={{ display: "flex", gap: 12, flexWrap: "wrap", paddingTop: 8 }}>
-                    <button className="btn-plum" onClick={handleScore} disabled={loading || selected.size === 0}>
+                    <button className="btn btn-primary" onClick={handleScore} disabled={loading || selected.size === 0}>
                       {loading ? <><span className="spinner" />Scoring…</> : <>Score {selected.size} Attack{selected.size !== 1 ? "s" : ""} <ChevronRight size={13} /></>}
                     </button>
-                    <button className="btn-ghost" onClick={() => setPhase("analyze")}>Back</button>
+                    <button className="btn btn-secondary" onClick={() => setPhase("analyze")}>Back</button>
                   </div>
                 </motion.div>
               )}
@@ -608,12 +608,12 @@ export default function HarnessPage() {
                 >
                   <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
                     <div>
-                      <p className="type-eyebrow" style={{ color: "var(--color-smoke)", marginBottom: 16 }}>Phase 03</p>
-                      <h1 style={{ fontFamily: "var(--font-acronym)", fontWeight: 300, fontSize: "clamp(36px, 4vw, 52px)", lineHeight: 1.0, letterSpacing: "-0.04em", color: "var(--color-bone)", margin: 0 }}>
+                      <p className="eyebrow" style={{ marginBottom: 16 }}>Phase 03</p>
+                      <h1 style={{ fontFamily: "var(--font-display), var(--font-sans), sans-serif", fontWeight: 700, fontSize: "clamp(36px, 4vw, 52px)", lineHeight: 0.96, letterSpacing: "-0.04em", color: "var(--ink)", margin: 0 }}>
                         Scoring complete.
                       </h1>
                     </div>
-                    <button className="btn-ghost" onClick={reset} style={{ flexShrink: 0 }}>
+                    <button className="btn btn-secondary" onClick={reset} style={{ flexShrink: 0 }}>
                       <RotateCcw size={12} /> New Test
                     </button>
                   </div>
@@ -624,12 +624,12 @@ export default function HarnessPage() {
                   {/* Next steps */}
                   <div className="divider" />
                   <div>
-                    <p className="type-eyebrow" style={{ color: "var(--color-smoke)", marginBottom: 16 }}>Next steps</p>
+                    <p className="eyebrow" style={{ marginBottom: 16 }}>Next steps</p>
                     <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                      <button className="btn-plum" onClick={handleDefend} disabled={loading} style={{ flex: 1, minWidth: 200, justifyContent: "center" }}>
+                      <button className="btn btn-primary" onClick={handleDefend} disabled={loading} style={{ flex: 1, minWidth: 200, justifyContent: "center" }}>
                         {loading ? <><span className="spinner" />Working…</> : <>Synthesize Defense <ChevronRight size={13} /></>}
                       </button>
-                      <button className="btn-ghost" onClick={handleCertificate} disabled={loading} style={{ flex: 1, minWidth: 200, justifyContent: "center" }}>
+                      <button className="btn btn-secondary" onClick={handleCertificate} disabled={loading} style={{ flex: 1, minWidth: 200, justifyContent: "center" }}>
                         {loading ? <><span className="spinner" />Working…</> : <>Generate Certificate <ChevronRight size={13} /></>}
                       </button>
                     </div>
@@ -649,15 +649,15 @@ export default function HarnessPage() {
                 >
                   <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
                     <div>
-                      <p className="type-eyebrow" style={{ color: "var(--color-smoke)", marginBottom: 16 }}>Phase 04</p>
-                      <h1 style={{ fontFamily: "var(--font-acronym)", fontWeight: 300, fontSize: "clamp(36px, 4vw, 52px)", lineHeight: 1.0, letterSpacing: "-0.04em", color: "var(--color-bone)", margin: "0 0 14px" }}>
+                      <p className="eyebrow" style={{ marginBottom: 16 }}>Phase 04</p>
+                      <h1 style={{ fontFamily: "var(--font-display), var(--font-sans), sans-serif", fontWeight: 700, fontSize: "clamp(36px, 4vw, 52px)", lineHeight: 0.96, letterSpacing: "-0.04em", color: "var(--ink)", margin: "0 0 14px" }}>
                         Defense synthesized.
                       </h1>
                       <p className="type-base" style={{ color: "var(--color-smoke)", margin: 0, maxWidth: 480 }}>
                         A hardened system prompt was generated to block the worst attack and its variants.
                       </p>
                     </div>
-                    <button className="btn-ghost" onClick={reset} style={{ flexShrink: 0 }}>
+                    <button className="btn btn-secondary" onClick={reset} style={{ flexShrink: 0 }}>
                       <RotateCcw size={12} /> New Test
                     </button>
                   </div>
@@ -667,8 +667,8 @@ export default function HarnessPage() {
 
                   <div className="divider" />
                   <div>
-                    <p className="type-eyebrow" style={{ color: "var(--color-smoke)", marginBottom: 16 }}>Next steps</p>
-                    <button className="btn-plum" onClick={handleCertificate} disabled={loading} style={{ alignSelf: "flex-start" }}>
+                    <p className="eyebrow" style={{ marginBottom: 16 }}>Next steps</p>
+                    <button className="btn btn-primary" onClick={handleCertificate} disabled={loading} style={{ alignSelf: "flex-start" }}>
                       {loading ? <><span className="spinner" />Working…</> : <>Generate Certificate <ChevronRight size={13} /></>}
                     </button>
                   </div>
@@ -687,15 +687,15 @@ export default function HarnessPage() {
                 >
                   <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
                     <div>
-                      <p className="type-eyebrow" style={{ color: "var(--color-smoke)", marginBottom: 16 }}>Phase 05</p>
-                      <h1 style={{ fontFamily: "var(--font-acronym)", fontWeight: 300, fontSize: "clamp(36px, 4vw, 52px)", lineHeight: 1.0, letterSpacing: "-0.04em", color: "var(--color-bone)", margin: "0 0 14px" }}>
+                      <p className="eyebrow" style={{ marginBottom: 16 }}>Phase 05</p>
+                      <h1 style={{ fontFamily: "var(--font-display), var(--font-sans), sans-serif", fontWeight: 700, fontSize: "clamp(36px, 4vw, 52px)", lineHeight: 0.96, letterSpacing: "-0.04em", color: "var(--ink)", margin: "0 0 14px" }}>
                         Safety certificate.
                       </h1>
                       <p className="type-base" style={{ color: "var(--color-smoke)", margin: 0, maxWidth: 480 }}>
                         Full report: technique-level scores, OWASP mapping, and actionable recommendations.
       </p>
                     </div>
-                    <button className="btn-ghost" onClick={reset} style={{ flexShrink: 0 }}>
+                    <button className="btn btn-secondary" onClick={reset} style={{ flexShrink: 0 }}>
                       <RotateCcw size={12} /> New Test
                     </button>
                   </div>
