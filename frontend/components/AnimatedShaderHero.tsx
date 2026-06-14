@@ -141,33 +141,59 @@ export default function AnimatedShaderHero() {
       />
 
       {/* Animated scroll cue — bottom-centre */}
-      <motion.div
+      <div
         aria-hidden
-        animate={{ y: [0, 6, 0], opacity: [0.4, 0.85, 0.4] }}
-        transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut", delay: 1.2 }}
         style={{
           position: "absolute",
-          bottom: 30,
+          bottom: 0,
           left: "50%",
           transform: "translateX(-50%)",
           zIndex: 10,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          gap: 5,
           pointerEvents: "none",
         }}
       >
-        <span
+        <motion.span
           className="mono"
-          style={{ fontSize: 9, letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(255,255,255,0.45)", whiteSpace: "nowrap" }}
+          animate={{ opacity: [0.35, 0.8, 0.35] }}
+          transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
+          style={{ 
+            fontSize: 11, 
+            fontWeight: 500,
+            letterSpacing: "0.3em", 
+            textTransform: "uppercase", 
+            color: "rgba(255,255,255,0.9)", 
+            marginBottom: 16,
+            marginRight: "-0.3em" // optical centering for letter-spacing
+          }}
         >
           scroll
-        </span>
-        <svg width="12" height="7" viewBox="0 0 12 7" fill="none" aria-hidden>
-          <path d="M1 1l5 5 5-5" stroke="rgba(255,255,255,0.45)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </motion.div>
+        </motion.span>
+        <div 
+          style={{ 
+            width: 1, 
+            height: 64, 
+            position: "relative", 
+            overflow: "hidden", 
+            background: "rgba(255,255,255,0.08)" 
+          }}
+        >
+          <motion.div 
+            animate={{ y: ["-100%", "200%"] }}
+            transition={{ duration: 2.2, repeat: Infinity, ease: "linear" }}
+            style={{ 
+              position: "absolute", 
+              top: 0, 
+              left: 0, 
+              width: "100%", 
+              height: "50%", 
+              background: "linear-gradient(to bottom, transparent, rgba(255,255,255,0.7), transparent)" 
+            }}
+          />
+        </div>
+      </div>
     </section>
   );
 }
