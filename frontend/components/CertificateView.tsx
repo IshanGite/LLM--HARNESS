@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { Download } from "lucide-react";
 import type { SafetyCertificate } from "@/lib/api";
 import { formatPct } from "@/lib/utils";
 import SeverityBadge from "./SeverityBadge";
@@ -14,12 +15,139 @@ const GRADE_COLOR: Record<string, string> = {
   F: "#ff5b5b",
 };
 
+const GRADE_HEX: Record<string, string> = {
+  A: "#15846e", B: "#6fcfb4", C: "#8052ff", D: "#ffb829", F: "#ff5b5b",
+};
+
+function buildCertificateHtml(data: SafetyCertificate): string {
+  const gradeHex = GRADE_HEX[data.safety_grade] ?? "#ff5b5b";
+  const techRows = (data.technique_scores ?? []).map(t => `
+    <tr>
+      <td>${t.technique.replace(/_/g, " ")}${t.technique === data.highest_risk_technique ? " ▲" : ""}</td>
+      <td>${(t.mean_score * 100).toFixed(0)}%</td>
+      <td>${(t.violation_rate * 100).toFixed(0)}%</td>
+      <td>${t.worst_severity ?? "—"}</td>
+    </tr>`).join("");
+
+  const recs = (data.recommendations ?? []).map((r, i) =>
+    `<li><strong>${String(i + 1).padStart(2, "0")}</strong> ${r}</li>`
+  ).join("");
+
+  const owasp = Object.entries(data.owasp_breakdown ?? {}).map(([k, v]) =>
+    `<span class="tag">${k}: ${v}</span>`
+  ).join(" ");
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>LLM Safety Certificate — Grade ${data.safety_grade}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Courier New', monospace; background: #fff; color: #111; padding: 48px; max-width: 800px; margin: 0 auto; }
+  h1 { font-family: Georgia, serif; font-size: 28px; font-weight: 400; letter-spacing: -0.02em; margin-bottom: 4px; }
+  .subtitle { font-size: 12px; color: #666; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 32px; }
+  .grade-block { display: flex; align-items: center; gap: 32px; border: 2px solid ${gradeHex}; border-radius: 12px; padding: 24px 32px; margin-bottom: 32px; }
+  .grade-letter { font-size: 80px; font-weight: 700; color: ${gradeHex}; line-height: 1; font-family: Georgia, serif; }
+  .stats { display: flex; gap: 32px; flex-wrap: wrap; }
+  .stat label { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #888; margin-top: 4px; }
+  .stat .val { font-size: 22px; font-weight: 700; color: ${gradeHex}; }
+  h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: #888; margin: 24px 0 10px; border-bottom: 1px solid #eee; padding-bottom: 6px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; color: #888; padding: 6px 10px; border-bottom: 2px solid #eee; }
+  td { padding: 9px 10px; border-bottom: 1px solid #f0f0f0; }
+  ol { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  li { padding: 10px 14px; background: #f8f8f8; border-radius: 6px; font-size: 13px; line-height: 1.6; }
+  li strong { color: ${gradeHex}; margin-right: 8px; }
+  .tag { display: inline-block; padding: 3px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 11px; margin: 2px; }
+  .footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #eee; font-size: 10px; color: #aaa; display: flex; justify-content: space-between; }
+  @media print { body { padding: 24px; } }
+</style>
+</head>
+<body>
+  <p class="subtitle">LLM Harness — AI Safety Report</p>
+  <h1>Safety Certificate</h1>
+
+  <div class="grade-block">
+    <div class="grade-letter">${data.safety_grade}</div>
+    <div class="stats">
+      <div class="stat"><div class="val">${data.overall_safety_score.toFixed(1)}/10</div><label>Safety score</label></div>
+      <div class="stat"><div class="val">${data.total_attacks_tested}</div><label>Attacks tested</label></div>
+      <div class="stat"><div class="val">${(data.composite_risk * 100).toFixed(0)}%</div><label>Composite risk</label></div>
+      <div class="stat"><div class="val">${(data.violation_rate * 100).toFixed(0)}%</div><label>Violation rate</label></div>
+    </div>
+  </div>
+
+  ${data.technique_scores?.length ? `
+  <h2>Technique breakdown</h2>
+  <table>
+    <thead><tr><th>Technique</th><th>Avg score</th><th>Viol %</th><th>Severity</th></tr></thead>
+    <tbody>${techRows}</tbody>
+  </table>` : ""}
+
+  ${data.recommendations?.length ? `
+  <h2>Recommendations</h2>
+  <ol>${recs}</ol>` : ""}
+
+  ${owasp ? `
+  <h2>OWASP LLM Top 10</h2>
+  <div>${owasp}</div>` : ""}
+
+  <div class="footer">
+    <span>Generated ${new Date(data.tested_at).toLocaleString()}</span>
+    <span>LLM Harness — llm-safety.dev</span>
+  </div>
+</body>
+</html>`;
+}
+
+function downloadCertificate(data: SafetyCertificate) {
+  const html = buildCertificateHtml(data);
+  const blob = new Blob([html], { type: "text/html" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `safety-certificate-grade-${data.safety_grade}-${Date.now()}.html`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function CertificateView({ data }: { data: SafetyCertificate }) {
   const gradeColor = GRADE_COLOR[data.safety_grade] ?? GRADE_COLOR.F;
   const owaspEntries = Object.entries(data.owasp_breakdown ?? {});
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+
+      {/* Download */}
+      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+        <button
+          onClick={() => downloadCertificate(data)}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 7,
+            background: "none",
+            border: "1px solid rgba(255,255,255,0.12)",
+            borderRadius: 10,
+            padding: "8px 16px",
+            cursor: "pointer",
+            fontFamily: "var(--font-acronym)",
+            fontSize: 12,
+            fontWeight: 600,
+            letterSpacing: "0.05em",
+            textTransform: "uppercase",
+            color: "var(--color-smoke)",
+            transition: "border-color 150ms, color 150ms",
+          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.3)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--color-bone)"; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.12)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--color-smoke)"; }}
+        >
+          <Download size={12} />
+          Download
+        </button>
+      </div>
 
       {/* Grade + headline stats */}
       <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 1, background: "rgba(255,255,255,0.07)", borderRadius: 22, overflow: "hidden" }}>
