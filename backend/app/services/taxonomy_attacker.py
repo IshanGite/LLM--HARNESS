@@ -1,7 +1,7 @@
 import asyncio
 import json
 from app.models.schemas import JailbreakTechnique, TaxonomyAttack
-from app.services.scorer import call_gemini_with_retry
+from app.services.scorer import call_openai_with_retry as call_gemini_with_retry
 
 # Each technique has a system prompt that tells Gemini exactly what jailbreak
 # style to use. The user message provides the target prompt + context.
