@@ -1,6 +1,5 @@
 # LLM Red-Team Harness
 
-[![CI](https://github.com/inslot2525-ctrl/LLM--HARNESS/actions/workflows/ci.yml/badge.svg)](https://github.com/inslot2525-ctrl/LLM--HARNESS/actions/workflows/ci.yml)
 ![Frontend](https://img.shields.io/badge/frontend-Next.js-black)
 ![Backend](https://img.shields.io/badge/backend-FastAPI-009688)
 ![OpenAI](https://img.shields.io/badge/AI-OpenAI-412991)
