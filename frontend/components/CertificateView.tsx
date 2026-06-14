@@ -26,7 +26,7 @@ function buildCertificateHtml(data: SafetyCertificate): string {
       <td>${t.technique.replace(/_/g, " ")}${t.technique === data.highest_risk_technique ? " ▲" : ""}</td>
       <td>${(t.mean_score * 100).toFixed(0)}%</td>
       <td>${(t.violation_rate * 100).toFixed(0)}%</td>
-      <td>${t.worst_severity ?? "—"}</td>
+      <td>${t.severity ?? "—"}</td>
     </tr>`).join("");
 
   const recs = (data.recommendations ?? []).map((r, i) =>

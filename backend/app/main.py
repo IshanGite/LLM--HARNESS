@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -12,13 +13,22 @@ from app.routes.history import router as history_router
 
 app = FastAPI(title="AI Safety Gateway")
 
+# Configure CORS origins
+allowed_origins = [
+    "http://localhost:3000", "http://127.0.0.1:3000",
+    "http://localhost:3001", "http://127.0.0.1:3001",
+    "http://localhost:3002", "http://127.0.0.1:3002",
+]
+env_origins = os.getenv("ALLOWED_ORIGINS")
+if env_origins:
+    if env_origins.strip() == "*":
+        allowed_origins = ["*"]
+    else:
+        allowed_origins.extend([origin.strip() for origin in env_origins.split(",")])
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000", "http://127.0.0.1:3000",
-        "http://localhost:3001", "http://127.0.0.1:3001",
-        "http://localhost:3002", "http://127.0.0.1:3002",
-    ],
+    allow_origins=allowed_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
