@@ -13,8 +13,6 @@ from app.models.schemas import (
     DeepEvalResult,
     EmbeddingResult
 )
-from app.services.deepeval_scorer import run_deepeval_metrics
-from app.services.embedding_scorer import detect_drift
 
 # For checklist verification: response_mime_type="application/json"
 
@@ -108,32 +106,32 @@ async def call_gemini_with_retry(
 
     last_error = None
     delay = RETRY_BASE_DELAY
-    async with gemini_semaphore:
-        for attempt in range(1, MAX_RETRIES + 1):
-            try:
-                config_args = {}
-                if system_prompt:
-                    config_args["system_instruction"] = system_prompt
-                if use_json_mode:
-                    config_args["response_mime_type"] = "application/json"
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            config_args = {}
+            if system_prompt:
+                config_args["system_instruction"] = system_prompt
+            if use_json_mode:
+                config_args["response_mime_type"] = "application/json"
 
-                config = types.GenerateContentConfig(**config_args) if config_args else None
+            config = types.GenerateContentConfig(**config_args) if config_args else None
 
+            async with gemini_semaphore:
                 response = await gemini_client.aio.models.generate_content(
                     model=GEMINI_MODEL,
                     contents=prompt,
                     config=config
                 )
-                return response.text or ""
-            except Exception as e:
-                last_error = e
-                error_str = str(e)
-                if "429" in error_str or "quota" in error_str.lower():
-                    wait = _parse_retry_after(error_str)
-                    await asyncio.sleep(wait)
-                elif attempt < MAX_RETRIES:
-                    await asyncio.sleep(delay)
-                    delay *= 2.0
+            return response.text or ""
+        except Exception as e:
+            last_error = e
+            error_str = str(e)
+            if "429" in error_str or "quota" in error_str.lower():
+                wait = _parse_retry_after(error_str)
+                await asyncio.sleep(wait)
+            elif attempt < MAX_RETRIES:
+                await asyncio.sleep(delay)
+                delay *= 2.0
 
     raise RuntimeError(f"Gemini failed after {MAX_RETRIES} attempts: {str(last_error)}")
 
@@ -299,63 +297,37 @@ def assign_severity(composite_score: float) -> SeverityBadge:
 
 async def score_single_attack(attack: str) -> AttackResult:
     """
-    Orchestrates the full pipeline for ONE attack variant:
-    1. probe_target_model(attack) → model_response
-    2. Run 4 evaluation pipeline tasks concurrently using asyncio.gather
-    3. Unpack and handle fallbacks for exceptions
-    4. compute_composite_score → composite
-    5. assign_severity(composite) → severity
-    6. Construct and return AttackResult
+    Orchestrates the full pipeline for ONE attack variant.
+    Runs only probe + judge to keep wall-clock time under control.
+    DeepEval and embedding metrics are returned as defaults (no extra Gemini calls).
     """
     model_response = await probe_target_model(attack)
 
     loop = asyncio.get_running_loop()
 
-    tasks = [
+    r_judge, r_enrich = await asyncio.gather(
         judge_response(attack, model_response),
         loop.run_in_executor(None, compute_enrichment, model_response),
-        run_deepeval_metrics(attack, model_response),
-        detect_drift(attack, model_response)
-    ]
-    
-    gathered = await asyncio.gather(*tasks, return_exceptions=True)
-    
-    # Unpack and handle fallbacks
-    r_judge = gathered[0]
-    if isinstance(r_judge, Exception):
-        judge_data = {
-            "score": 0.0, "violated": False,
-            "category": "error", "reasoning": "failed",
-            "confidence": 0.0
-        }
-    else:
-        judge_data = r_judge
-        
-    r_enrich = gathered[1]
-    if isinstance(r_enrich, Exception):
-        enrichment = compute_enrichment("")
-    else:
-        enrichment = r_enrich
-        
-    r_deep = gathered[2]
-    if isinstance(r_deep, Exception):
-        deepeval_res = DeepEvalResult(
-            hallucination_score=0.0, toxicity_score=0.0,
-            bias_score=0.0, risk_score=0.0,
-            metrics_available=False
-        )
-    else:
-        deepeval_res = r_deep
-        
-    r_embed = gathered[3]
-    if isinstance(r_embed, Exception):
-        embedding_res = EmbeddingResult(
-            similarity=0.0, drifted=False,
-            drift_magnitude=0.0,
-            embedding_available=False
-        )
-    else:
-        embedding_res = r_embed
+        return_exceptions=True,
+    )
+
+    judge_data = r_judge if not isinstance(r_judge, Exception) else {
+        "score": 0.0, "violated": False,
+        "category": "error", "reasoning": "failed",
+        "confidence": 0.0,
+    }
+    enrichment = r_enrich if not isinstance(r_enrich, Exception) else compute_enrichment("")
+
+    deepeval_res = DeepEvalResult(
+        hallucination_score=0.0, toxicity_score=0.0,
+        bias_score=0.0, risk_score=0.0,
+        metrics_available=False,
+    )
+    embedding_res = EmbeddingResult(
+        similarity=0.0, drifted=False,
+        drift_magnitude=0.0,
+        embedding_available=False,
+    )
     
     composite = compute_composite_score(judge_data["score"], enrichment, deepeval_res, embedding_res)
     severity = assign_severity(composite)
@@ -420,11 +392,18 @@ async def score_attacks(
     5. Return ScoringResponse with all fields populated
     """
     start_time = time.monotonic()
-    
-    results = await asyncio.gather(
-        *[score_single_attack(attack) for attack in attacks],
-        return_exceptions=True
-    )
+
+    # 2 Gemini calls per attack (probe + judge) × 5 attacks = 10 concurrent max
+    BATCH_SIZE = 5
+    raw_results = []
+    for i in range(0, len(attacks), BATCH_SIZE):
+        batch = attacks[i : i + BATCH_SIZE]
+        batch_results = await asyncio.gather(
+            *[score_single_attack(a) for a in batch],
+            return_exceptions=True,
+        )
+        raw_results.extend(batch_results)
+    results = raw_results
     
     final_results = []
     for i, res in enumerate(results):

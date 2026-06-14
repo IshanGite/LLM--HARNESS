@@ -26,7 +26,11 @@ async def create_score(request: ScoringRequest):
 
     try:
         result = await score_attacks(request.original_prompt, request.attacks)
-        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    # DB write is best-effort — never let it fail the scoring response
+    try:
         await db_client.execute("""
             CREATE TABLE IF NOT EXISTS attack_scores (
                 id                    INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -57,76 +61,41 @@ async def create_score(request: ScoringRequest):
                 timestamp             TEXT    NOT NULL
             )
         """)
-        
-        # Insert one row per AttackResult in result.all_results
+
         for r in result.all_results:
             keywords_found_str = json.dumps(r.enrichment.sensitivity_keywords_found)
-            violated_int = 1 if r.violated else 0
-            refusal_detected_int = 1 if r.enrichment.refusal_detected else 0
-            metrics_available_int = 1 if r.deepeval_result.metrics_available else 0
-            embedding_drifted_int = 1 if r.embedding_result.drifted else 0
-            embedding_available_int = 1 if r.embedding_result.embedding_available else 0
-            
             await db_client.execute(
                 """
                 INSERT INTO attack_scores (
-                    original_prompt,
-                    attack,
-                    model_response,
-                    judge_score,
-                    composite_score,
-                    severity,
-                    violated,
-                    category,
-                    reasoning,
-                    confidence,
-                    refusal_detected,
-                    keywords_found,
-                    hallucination_score,
-                    toxicity_score,
-                    bias_score,
-                    deepeval_risk_score,
-                    metrics_available,
-                    embedding_similarity,
-                    embedding_drifted,
-                    drift_magnitude,
-                    embedding_available,
-                    violation_rate,
-                    composite_risk,
-                    evaluation_time_ms,
-                    timestamp
+                    original_prompt, attack, model_response, judge_score,
+                    composite_score, severity, violated, category, reasoning,
+                    confidence, refusal_detected, keywords_found,
+                    hallucination_score, toxicity_score, bias_score,
+                    deepeval_risk_score, metrics_available, embedding_similarity,
+                    embedding_drifted, drift_magnitude, embedding_available,
+                    violation_rate, composite_risk, evaluation_time_ms, timestamp
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 [
-                    result.original_prompt,
-                    r.attack,
-                    r.model_response,
-                    r.judge_score,
-                    r.composite_score,
-                    r.severity.value,
-                    violated_int,
-                    r.category,
-                    r.reasoning,
-                    r.confidence,
-                    refusal_detected_int,
+                    result.original_prompt, r.attack, r.model_response,
+                    r.judge_score, r.composite_score, r.severity.value,
+                    1 if r.violated else 0, r.category, r.reasoning,
+                    r.confidence, 1 if r.enrichment.refusal_detected else 0,
                     keywords_found_str,
                     r.deepeval_result.hallucination_score,
                     r.deepeval_result.toxicity_score,
                     r.deepeval_result.bias_score,
                     r.deepeval_result.risk_score,
-                    metrics_available_int,
+                    1 if r.deepeval_result.metrics_available else 0,
                     r.embedding_result.similarity,
-                    embedding_drifted_int,
+                    1 if r.embedding_result.drifted else 0,
                     r.embedding_result.drift_magnitude,
-                    embedding_available_int,
-                    result.violation_rate,
-                    result.composite_risk,
-                    result.evaluation_time_ms,
-                    result.timestamp
+                    1 if r.embedding_result.embedding_available else 0,
+                    result.violation_rate, result.composite_risk,
+                    result.evaluation_time_ms, result.timestamp,
                 ]
             )
-            
-        _route_duration = time.time() - _start_time
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as db_err:
+        print(f"[score] DB write failed (non-fatal): {db_err}")
+
+    return result
