@@ -76,14 +76,26 @@ function ThreatBeat({
   const gap = 1 / total;
   const s = i * gap;
   const e = (i + 1) * gap;
-  // Cross-fade: each beat starts appearing half a FADE before its natural slot boundary,
-  // overlapping with the previous beat's fade-out so there is never a blank window.
-  const FADE = 0.055;
-  const i0 = Math.max(0, s - FADE / 2);
-  const i1 = Math.min(s + FADE, e);
-  const o0 = Math.max(s, e - FADE);
-  const o1 = Math.min(1, e + FADE / 2);
-  const opacity = useTransform(progress, [i0, i1, o0, o1], [0, 1, 1, 0]);
+  
+  // Keep FADE slightly elevated for smooth crossfades, but not too slow
+  const FADE = 0.08;
+  
+  let domain: number[], range: number[];
+  if (i === 0) {
+    // First beat starts fully visible
+    domain = [0, Math.max(s, e - FADE), Math.min(1, e + FADE / 2)];
+    range = [1, 1, 0];
+  } else if (i === total - 1) {
+    // Last beat stays visible until the section unpins, avoiding a dead space
+    domain = [Math.max(0, s - FADE / 2), Math.min(s + FADE, e), 1];
+    range = [0, 1, 1];
+  } else {
+    // Middle beats fade in and out normally
+    domain = [Math.max(0, s - FADE / 2), Math.min(s + FADE, e), Math.max(s, e - FADE), Math.min(1, e + FADE / 2)];
+    range = [0, 1, 1, 0];
+  }
+  
+  const opacity = useTransform(progress, domain, range);
 
   return (
     <motion.div
@@ -131,14 +143,14 @@ function ThreatSection() {
   const ref = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
     target: ref,
-    offset: ["start start", "end start"],
+    offset: ["start start", "end end"],
   });
 
   return (
     <section
       id="threat"
       ref={ref}
-      style={{ height: `${THREAT_BEATS.length * 67}vh`, position: "relative" }}
+      style={{ height: `${THREAT_BEATS.length * 100}vh`, position: "relative" }}
     >
       {/* the sticky viewport — content sticks while the outer track scrolls */}
       <div
@@ -192,7 +204,7 @@ function ThreatSection() {
             letterSpacing: "0.18em",
             textTransform: "uppercase",
             color: "var(--ink-3)",
-            opacity: useTransform(scrollYProgress, [0, 0.2], [1, 0]),
+            opacity: useTransform(scrollYProgress, [0, 0.15], [1, 0]),
           }}
         >
           keep scrolling
@@ -253,10 +265,10 @@ const ANALYZE: Phase = {
   id: "analyze",
   tag: "01 / Analyze",
   title: "Read the prompt like an adversary.",
-  lead: "Before a single attack is generated, an OpenAI classifier profiles the prompt: how risky it is, which threat category it belongs to, and the intent behind it. Every later phase is steered by this, so testing stays targeted.",
+  lead: "Before a single attack is generated, a Gemini classifier profiles the prompt: how risky it is, which threat category it belongs to, and the intent behind it. Every later phase is steered by this, so testing stays targeted.",
   steps: [
     { n: "01", t: "Ingest the raw prompt", d: "Exactly as a user would submit it, with no sanitising. The model sees what an attacker types." },
-    { n: "02", t: "Classify the intent", d: "OpenAI reads the prompt for adversarial signal and reasons about the real objective." },
+    { n: "02", t: "Classify the intent", d: "Gemini reads the prompt for adversarial signal and reasons about the real objective." },
     { n: "03", t: "Return strict JSON", d: "A 0–1 risk score, the most specific threat category, and a one-line statement of intent." },
     { n: "04", t: "Seed the attack phase", d: "The profile is handed downstream so every generated variant inherits the same target." },
   ],
@@ -275,7 +287,7 @@ const ATTACK: Phase = {
   id: "attack",
   tag: "02 / Attack",
   title: "Multiply one prompt into ten attacks.",
-  lead: "The threat profile becomes ammunition. An OpenAI red-teamer expands the prompt into ten distinct adversarial variants. Each preserves the goal while probing a different route: alternate phrasings, indirect framings, realistic threat scenarios.",
+  lead: "The threat profile becomes ammunition. A Gemini red-teamer expands the prompt into ten distinct adversarial variants. Each preserves the goal while probing a different route: alternate phrasings, indirect framings, realistic threat scenarios.",
   steps: [
     { n: "01", t: "Inherit the context", d: "Prompt, category and intent from Analyze become the red-teamer's brief." },
     { n: "02", t: "Diversify with temperature", d: "Runs at temperature 0.8 to maximise variety across the ten variants, not rephrase one sentence." },
@@ -299,7 +311,7 @@ const ATTACK: Phase = {
 };
 
 const signals = [
-  { label: "Judge",    w: 40, desc: "A strict OpenAI auditor rates the response 0–1 on a five-band scale, with a written rationale and confidence." },
+  { label: "Judge",    w: 40, desc: "A strict Gemini auditor rates the response 0–1 on a five-band scale, with a written rationale and confidence." },
   { label: "DeepEval", w: 30, desc: "Programmatic hallucination, toxicity and bias metrics combine into one model-risk score." },
   { label: "Embedding",w: 15, desc: "Cosine similarity between attack and response. High similarity means the model echoed the goal." },
   { label: "Refusal",  w: 15, desc: "A zero-LLM check: a clean refusal phrase drops this term to 0 and is rewarded." },
@@ -420,7 +432,15 @@ export default function HomePage() {
         <div className="container">
           <div style={{ maxWidth: 820 }}>
             <Reveal>
-              <p className="eyebrow project-name" style={{ marginBottom: 18 }}>LLM red-team harness</p>
+              <p className="mono" style={{ 
+                marginBottom: 20, 
+                fontSize: "clamp(24px, 3vw, 38px)", 
+                letterSpacing: "0.1em",
+                fontWeight: 400,
+                color: "var(--brand)",
+                opacity: 0.75,
+                textTransform: "uppercase"
+              }}>LLM red-team harness</p>
             </Reveal>
             <motion.h1
               initial={{ opacity: 0, y: 24 }}
@@ -431,7 +451,7 @@ export default function HomePage() {
                 margin: "0 0 18px",
                 fontFamily: "var(--font-display), sans-serif",
                 fontWeight: 700,
-                fontSize: "clamp(42px, 7.2vw, 112px)",
+                fontSize: "clamp(52px, 9.4vw, 148px)",
                 lineHeight: 0.9,
                 letterSpacing: "-0.05em",
                 background: "linear-gradient(130deg, #FDE68A 0%, #FBBF24 30%, #F97316 65%, #DC2626 100%)",
@@ -541,7 +561,7 @@ export default function HomePage() {
             <MaskReveal className="h1 section-title" lines={[{ t: "No single point of failure." }]} style={{ color: "var(--on-band)", marginBottom: 14 }} />
             <Reveal delay={0.05}>
               <p className="lead" style={{ color: "var(--on-band-2)", maxWidth: 620 }}>
-                Every variant is fired at an unguarded target model: OpenAI with no safety system prompt,
+                Every variant is fired at an unguarded target model: Gemini with no safety system prompt,
                 the worst-case deployment. Four independent signals grade each response, fuse into one
                 composite, then map to a severity badge and rank.
               </p>
@@ -627,7 +647,7 @@ export default function HomePage() {
       <footer className="band" style={{ padding: "36px 0", borderTop: "1px solid var(--line)" }}>
         <div className="container" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 20 }}>
           <Logo size={24} tone="light" accent="#948FF4" />
-          <p className="mono" style={{ fontSize: 12, color: "var(--on-band-2)", margin: 0 }}>Next.js / FastAPI / OpenAI</p>
+          <p className="mono" style={{ fontSize: 12, color: "var(--on-band-2)", margin: 0 }}>Next.js / FastAPI / Gemini</p>
         </div>
       </footer>
     </main>
