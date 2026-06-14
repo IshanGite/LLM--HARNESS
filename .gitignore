@@ -41,6 +41,7 @@ openai-ready-project/
 *.sqlite
 *.sqlite3
 .deepeval/
+backend/.deepeval/
 .npm-cache/
 openai-ready-project/.npm-cache/
 
