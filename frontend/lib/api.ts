@@ -1,7 +1,14 @@
+// Proxied base — fine for fast requests (< 30s)
 const API_BASE =
   typeof window !== "undefined"
     ? "/api"
     : process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+// Direct base — bypasses the Next.js dev proxy for slow requests.
+// The Next.js rewrite proxy has a hard ~30s timeout; scoring/defense/certificate
+// can take longer, so we call the backend directly (CORS is allowed on localhost:3000).
+const DIRECT_BASE =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 // ─── CORE TYPES ───────────────────────────────────────────────────────────────
 
@@ -181,12 +188,7 @@ export interface RedTeamResponse {
 
 // ─── HTTP HELPERS ─────────────────────────────────────────────────────────────
 
-async function request<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+async function parseResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
     const text = await res.text();
     try {
@@ -197,6 +199,25 @@ async function request<T>(path: string, body: unknown): Promise<T> {
     }
   }
   return res.json();
+}
+
+async function request<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return parseResponse<T>(res);
+}
+
+// Skips the Next.js rewrite proxy — use for requests that take > 30s
+async function requestDirect<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${DIRECT_BASE}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return parseResponse<T>(res);
 }
 
 async function get<T>(path: string): Promise<T> {
@@ -214,7 +235,7 @@ export const generateAttacks = (prompt: string) =>
   request<AttackResponse>("/attacks", { prompt });
 
 export const scoreAttacks = (original_prompt: string, attacks: string[]) =>
-  request<ScoringResponse>("/score", { original_prompt, attacks });
+  requestDirect<ScoringResponse>("/score", { original_prompt, attacks });
 
 export const synthesizeDefense = (
   attack: string,
@@ -223,7 +244,7 @@ export const synthesizeDefense = (
   original_score: number,
   original_system_prompt = ""
 ) =>
-  request<DefenseResult>("/defend", {
+  requestDirect<DefenseResult>("/defend", {
     attack,
     attack_category,
     attack_reasoning,
@@ -238,7 +259,7 @@ export const generateCertificate = (
   severity_distribution: Record<string, number>,
   total_attacks_tried: number
 ) =>
-  request<SafetyCertificate>("/certificate", {
+  requestDirect<SafetyCertificate>("/certificate", {
     all_results,
     composite_risk,
     violation_rate,
