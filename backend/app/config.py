@@ -1,29 +1,40 @@
 import asyncio
 import os
 from openai import AsyncOpenAI
+# pyrefly: ignore [missing-import]
+from google import genai
+from google.genai import types
 from dotenv import load_dotenv
 
 load_dotenv(override=True)
 
+# OpenAI Config
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
-
 openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY or "TODO_KEY")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5.5")
-EMBEDDING_MODEL = os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
+OPENAI_EMBEDDING_MODEL = os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
 
-TURSO_DATABASE_URL = os.getenv("TURSO_DATABASE_URL") or "file:local_scores.db"
-TURSO_AUTH_TOKEN = os.getenv("TURSO_AUTH_TOKEN") or ""
-
-# Raise via OPENAI_SEMAPHORE_SIZE=10 in .env for paid-tier keys.
 OPENAI_SEMAPHORE_SIZE = int(os.getenv("OPENAI_SEMAPHORE_SIZE", "3"))
 openai_semaphore = asyncio.Semaphore(OPENAI_SEMAPHORE_SIZE)
 
-# Additional OpenAI model variants used by multi-model benchmarking.
 BENCHMARK_MODELS = [
     model.strip()
     for model in os.getenv("OPENAI_BENCHMARK_MODELS", "gpt-5.5").split(",")
     if model.strip()
 ]
+
+# Gemini Config
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
+if GEMINI_API_KEY:
+    gemini_client = genai.Client(api_key=GEMINI_API_KEY)
+else:
+    gemini_client = None
+
+GEMINI_MODEL = "gemini-2.5-flash"
+EMBEDDING_MODEL = "gemini-embedding-001"
+
+GEMINI_SEMAPHORE_SIZE = int(os.getenv("GEMINI_SEMAPHORE_SIZE", "3"))
+gemini_semaphore = asyncio.Semaphore(GEMINI_SEMAPHORE_SIZE)
 
 
 def is_openai_mock_mode() -> bool:
