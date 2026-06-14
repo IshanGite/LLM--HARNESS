@@ -1,21 +1,4 @@
-# Environment files
-.env
-.env.*
-!.env.example
-backend/.env
-backend/.env.*
-frontend/.env.local
-frontend/.env.*.local
-openai-ready-project/backend/.env
-openai-ready-project/backend/.env.*
-openai-ready-project/frontend/.env.local
-openai-ready-project/frontend/.env.*.local
-
-# Python
 .venv/
-venv/
-backend/.venv/
-openai-ready-project/backend/.venv/
 __pycache__/
 *.py[cod]
 *$py.class

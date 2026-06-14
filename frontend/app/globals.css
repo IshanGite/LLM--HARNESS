@@ -520,15 +520,6 @@ body {
   letter-spacing: 0.2em; text-transform: uppercase;
   color: var(--brand);
 }
-.project-name {
-  font-family: var(--font-display), sans-serif;
-  font-size: clamp(34px, 5vw, 68px);
-  font-weight: 700;
-  letter-spacing: 0;
-  line-height: 1.05;
-  text-transform: none;
-  color: var(--brand-bright);
-}
 .display {
   font-family: var(--font-display), sans-serif;
   font-weight: 700; letter-spacing: -0.05em; line-height: 0.9;
