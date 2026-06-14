@@ -1,8 +1,24 @@
 # LLM Red-Team Harness
 
+[![CI](https://github.com/inslot2525-ctrl/LLM--HARNESS/actions/workflows/ci.yml/badge.svg)](https://github.com/inslot2525-ctrl/LLM--HARNESS/actions/workflows/ci.yml)
+![Frontend](https://img.shields.io/badge/frontend-Next.js-black)
+![Backend](https://img.shields.io/badge/backend-FastAPI-009688)
+![OpenAI](https://img.shields.io/badge/AI-OpenAI-412991)
+![License](https://img.shields.io/badge/license-MIT-blue)
+
 An interactive red-team harness for testing how an LLM responds to risky prompts, adversarial variants, and prompt-injection attempts. The app analyzes a prompt, generates attack variants, scores model behavior, suggests defensive prompt hardening, and can produce a safety-style report for the tested session.
 
 The project is built with a FastAPI backend and a Next.js frontend. It uses OpenAI models for classification, attack generation, target responses, judging, defense synthesis, and embeddings. If no valid API key is configured, the backend falls back to a local mock mode so the app can still be opened and tested without crashing.
+
+## Why It Matters
+
+LLM apps can fail in subtle ways: prompt injection, unsafe compliance, data disclosure, weak refusals, and brittle system prompts. This project turns those failure modes into a repeatable builder workflow:
+
+```text
+Analyze -> Attack -> Score -> Defend -> Certify
+```
+
+It helps teams discover where a model breaks, understand the strongest failure mode, and generate a concrete mitigation path.
 
 ## Features
 
@@ -19,7 +35,30 @@ The project is built with a FastAPI backend and a Next.js frontend. It uses Open
 
 ## Project Docs
 
+- [Architecture](docs/ARCHITECTURE.md)
+- [API Reference](docs/API.md)
+- [Demo Script](docs/DEMO_SCRIPT.md)
+- [Hackathon Alignment](docs/HACKATHON_ALIGNMENT.md)
 - [Software Development Life Cycle](SDLC.md)
+- [Roadmap](ROADMAP.md)
+- [Security Policy](SECURITY.md)
+
+## Screenshots
+
+Screenshots should be stored in:
+
+```text
+assets/screenshots/
+```
+
+Suggested screenshots:
+
+- landing page
+- analyze step
+- generated attacks
+- scoring result
+- defense synthesis
+- certificate/report view
 
 ## Workflow
 
@@ -93,8 +132,23 @@ LLM--HARNESS/
     package.json
     next.config.ts            Local /api rewrite to the backend
 
+  assets/
+    screenshots/              Demo screenshots for GitHub and judges
+  docs/
+    ARCHITECTURE.md
+    API.md
+    DEMO_SCRIPT.md
+    HACKATHON_ALIGNMENT.md
+  .github/
+    workflows/
+      ci.yml                  Backend and frontend CI checks
+  .env.example
   .gitignore
+  LICENSE
+  ROADMAP.md
   README.md
+  SDLC.md
+  SECURITY.md
 ```
 
 ## Requirements
@@ -128,7 +182,7 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
-Create `backend/.env`:
+Create `backend/.env` using `.env.example` as the template:
 
 ```env
 OPENAI_API_KEY=sk-proj-your-real-key-here
